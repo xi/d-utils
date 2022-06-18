@@ -1,0 +1,99 @@
+#!/bin/env python3
+
+import os
+import json
+import argparse
+
+
+def make_volume(path, dir):
+	if ':' in path:
+		hostpath, path = path.split(':', 1)
+	else:
+		hostpath = os.path.join(dir, 'volumes', path.lstrip('/'))
+		os.makedirs(hostpath, exist_ok=True)
+
+	if ':' in path:
+		path, option = path.rsplit(':', 1)
+	else:
+		option = 'rw'
+
+	op = '--ro-bind' if option == 'ro' else '--bind'
+
+	return [op, hostpath, path]
+
+
+def build_cmd(dir, config):
+	cmd = [
+		'bwrap',
+		'--bind', os.path.join(dir, 'rootfs'), '/',
+		'--tmpfs', '/tmp',
+		'--dev', '/dev',
+		'--proc', '/proc',
+		# '--clear-env',  # bwrap >= 0.5
+		'--unshare-all',
+		'--die-with-parent',
+	]
+
+	if config.get('Hostname'):
+		cmd += ['--hostname', config['Hostname']]
+	if config.get('WorkingDir'):
+		cmd += ['--chdir', config['WorkingDir']]
+
+	for entry in config['Env']:
+		key, value = entry.split('=', 1)
+		cmd += ['--setenv', key, value]
+
+	if config.get('Volumes'):
+		for volume in config['Volumes']:
+			cmd += make_volume(volume, dir)
+
+	if config.get('net'):
+		cmd += [
+			'--ro-bind', '/etc/resolv.conf', '/etc/resolv.conf',
+			'--share-net',
+		]
+
+	if config.get('fakeroot'):
+		cmd += [
+			'--uid', '0',
+			'--gid', '0',
+		]
+
+	if config.get('Entrypoint'):
+		cmd += config['Entrypoint']
+
+	cmd += config['Cmd']
+
+	return cmd
+
+
+def parse_args():
+	parser = argparse.ArgumentParser()
+	parser.add_argument('dir')
+	parser.add_argument('-v', '--volume', action='append')
+	parser.add_argument('-n', '--net', action='store_true')
+	parser.add_argument('-r', '--fakeroot', action='store_true')
+	parser.add_argument('cmd', nargs='*')
+	return parser.parse_args()
+
+
+if __name__ == '__main__':
+	args = parse_args()
+
+	with open(os.path.join(args.dir, 'config.json')) as fh:
+		config = json.load(fh)
+
+	if args.cmd:
+		config['Cmd'] = args.cmd
+	if args.net:
+		config['net'] = True
+	if args.fakeroot:
+		config['fakeroot'] = True
+	if args.volume:
+		if not config.get('Volumes'):
+			config['Volumes'] = {}
+		for volume in args.volume:
+			config['Volumes'][volume] = {}
+
+	cmd = build_cmd(args.dir, config)
+	os.execvp(cmd[0], cmd)
