@@ -9,8 +9,9 @@
 
 # Config
 
-This is the full list of values from docker's `config.json` that are actually
-used by `d-run`:
+This is the full list of values from docker's
+[`config.json`](https://github.com/opencontainers/image-spec/blob/main/config.md)
+that are actually used by `d-run`:
 
 -	`Hostname`
 -	`WorkingDir`
