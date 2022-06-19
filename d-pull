@@ -5,7 +5,7 @@ REGISTRY='https://registry-1.docker.io'
 CACHE_DIR="$HOME/.cache/d-utils/"
 mkdir -p "$CACHE_DIR"
 
-if [ $# -lt 1 -o $1 = '-h' ]; then
+if [ $# -lt 1 ] || [ "$1" = '-h' ]; then
 	echo "usage: d-pull [-h] name[@tag] [dir]"
 	exit 1
 fi
