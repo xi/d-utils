@@ -3,9 +3,8 @@
 `d-utils` is a set of simple utils to use docker images without docker.
 
 -	`d-pull NAME[@TAG] [DIR]` will download a docker image and save it to `DIR`.
-	It is saved as a single `rootfs` folder along with `config.json`.
--	`d-run DIR [CMD]` will execute `CMD` in the container give by `DIR`. Volumes
-	are created in `DIR/volumes/`.
+	It is saved as a single `rootfs` folder along with a `config.json`.
+-	`d-run DIR [CMD]` will execute `CMD` in the container give by `DIR`.
 
 # Config
 
@@ -40,18 +39,20 @@ system. If you need a new container based on the same image you can just run
 > -- [Christian Brauner](https://people.kernel.org/brauner/the-seccomp-notifier-new-frontiers-in-unprivileged-container-development)
 
 I (think I) can remember when cgroups and namespaces were added to linux. Back
-then they were announced as low level features that were not supposed to be
+then they were announced as low-level features that were not supposed to be
 used directly, but that could enable exciting new high-level tools.
 
-And boy did that make waves. Nowadays flatpak and snap use these features to
-containerize desktop applications, systemd uses them to isolate system
-services, and docker seems to have thoroughly conquered deployment.
+And boy did that make waves. Nowadays there are many tools that use these
+low-level features: systemd uses them to isolate system services, flatpak and
+snap do something similar for desktop applications, and docker has popularized
+the idea of "containers" that have no spread far beyond docker itself.
 
 My trouble is: None of these tools feel like they have nailed the "high level"
 aspect of this. `systemd-analyze security` for example lists 80 (!) different
-settings. The user experience is just not that great.
+settings. What I expect from a high-level tool is a good mix between flexibility
+and simplicity, and these tools seem to give me neither.
 
-Docker is the worst offender in my opinion. I still have to check the docs
+Docker is the worst offender in my opinion. It has a complicated CLI, I still have to check the docs
 every time I want to start a container, but worse than that it hides the
 images, containers, and volumes in some impenetrable folder structure. On top
 of that, it executes all containers as root which is a massive security issue.
