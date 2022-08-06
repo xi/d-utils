@@ -17,11 +17,6 @@ else
 	img=$1
 	tag='latest'
 fi
-if [ $# -gt 1 ]; then
-	dir=$(realpath -m "$2")
-else
-	dir=$(realpath -m "$1")
-fi
 if echo "$img" | grep -q '/'; then
 	lib=$(echo "$img" | cut -f2 -d/)
 	img=$(echo "$img" | cut -f1 -d/)
@@ -29,6 +24,11 @@ else
 	lib='library'
 fi
 
+if [ $# -gt 1 ]; then
+	dir=$(realpath -m "$2")
+else
+	dir=$(realpath -m "$img")
+fi
 if [ -e "$dir" ]; then
 	echo "$dir already exists"
 	exit 1
