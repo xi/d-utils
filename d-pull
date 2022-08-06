@@ -22,8 +22,11 @@ if [ $# -gt 1 ]; then
 else
 	dir=$(realpath -m "$1")
 fi
-if echo "$img" | grep -q -v '/'; then
-	img="library/$img"
+if echo "$img" | grep -q '/'; then
+	lib=$(echo "$img" | cut -f2 -d/)
+	img=$(echo "$img" | cut -f1 -d/)
+else
+	lib='library'
 fi
 
 if [ -e "$dir" ]; then
@@ -31,25 +34,26 @@ if [ -e "$dir" ]; then
 	exit 1
 fi
 
-echo "pulling $img@$tag to $dir"
+echo "pulling $lib/$img@$tag to $dir"
+url="$REGISTRY/v2/$lib/$img"
 
 echo "  fetching token"
 auth_url=$(curl -s -I "$REGISTRY/v2/" | grep -i www-authenticate | sed 's/.*realm="\(.*\)",service="\(.*\)".*/\1?service=\2/')
-auth_token=$(curl -s "$auth_url&scope=repository:$img:pull" | jq -r '.token')
+auth_token=$(curl -s "$auth_url&scope=repository:$lib/$img:pull" | jq -r '.token')
 auth="Authorization: Bearer $auth_token"
 
 # fail if server reports error
-curl --head -f --no-progress-meter -o /dev/null -H "$auth" "$REGISTRY/v2/$img/manifests/$tag"
+curl --head -f --no-progress-meter -o /dev/null -H "$auth" "$url/manifests/$tag"
 
 mkdir -p "$dir/rootfs"
-echo "$img@$tag" > "$dir/image.txt"
+echo "$lib/$img@$tag" > "$dir/image.txt"
 
 echo "  fetching manifest"
-curl -s -H "$auth" -H "Accept: application/vnd.docker.distribution.manifest.v2+json" "$REGISTRY/v2/$img/manifests/$tag" -o "$dir/manifest.json"
+curl -s -H "$auth" -H "Accept: application/vnd.docker.distribution.manifest.v2+json" "$url/manifests/$tag" -o "$dir/manifest.json"
 
 echo "  fetching config"
 config=$(jq -r '.config.digest' "$dir/manifest.json")
-curl -s -L -H "$auth" "$REGISTRY/v2/$img/blobs/$config" | jq '.config' > "$dir/config.json"
+curl -s -L -H "$auth" "$url/blobs/$config" | jq '.config' > "$dir/config.json"
 
 echo "  fetching layers"
 jq -r '.layers|map(.digest)|.[]' "$dir/manifest.json" | while read -r blob; do
@@ -57,7 +61,7 @@ jq -r '.layers|map(.digest)|.[]' "$dir/manifest.json" | while read -r blob; do
 	if [ -e "$CACHE_DIR/$blob" ]; then
 		touch "$CACHE_DIR/$blob"
 	else
-		curl -s -L -H "$auth" "$REGISTRY/v2/$img/blobs/$blob" -o "$CACHE_DIR/$blob"
+		curl -s -L -H "$auth" "$url/blobs/$blob" -o "$CACHE_DIR/$blob"
 	fi
 	tar -C "$dir/rootfs" -xf "$CACHE_DIR/$blob"
 done
@@ -66,4 +70,4 @@ echo "  cleanup"
 rm "$dir/manifest.json"
 find "$CACHE_DIR" -type f -mtime +30 -exec rm -f {} +
 
-echo "successfully pulled $img@$tag to $dir"
+echo "successfully pulled $lib/$img@$tag to $dir"
