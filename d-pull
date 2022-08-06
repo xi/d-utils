@@ -1,21 +1,24 @@
 #!/bin/sh -e
 
-REGISTRY='https://registry-1.docker.io'
-
 CACHE_DIR="$HOME/.cache/d-utils/"
 mkdir -p "$CACHE_DIR"
 
 if [ $# -lt 1 ] || [ "$1" = '-h' ]; then
-	echo "usage: d-pull [-h] name[@tag] [dir]"
+	echo "usage: d-pull [-h] [registry/]name[@tag] [dir]"
 	exit 1
 fi
 
 if echo "$1" | grep -q '/'; then
-	lib=$(echo "$1" | cut -d/ -f1)
-	img=$(echo "$1" | cut -d/ -f2)
+	reg=$(echo "$1" | rev | cut -d/ -f1-2 --complement | rev)
+	lib=$(echo "$1" | rev | cut -d/ -f2 | rev)
+	img=$(echo "$1" | rev | cut -d/ -f1 | rev)
 else
+	reg=''
 	lib='library'
 	img="$1"
+fi
+if [ -z "$reg" ]; then
+	reg='registry-1.docker.io'
 fi
 if echo "$img" | grep -q '@'; then
 	tag=$(echo "$img" | cut -d@ -f2)
@@ -34,11 +37,11 @@ if [ -e "$dir" ]; then
 	exit 1
 fi
 
-echo "pulling $lib/$img@$tag to $dir"
-url="$REGISTRY/v2/$lib/$img"
+echo "pulling $reg/$lib/$img@$tag to $dir"
+url="https://$reg/v2/$lib/$img"
 
 echo "  fetching token"
-auth_url=$(curl -s -I "$REGISTRY/v2/" | grep -i www-authenticate | sed 's/.*realm="\(.*\)",service="\(.*\)".*/\1?service=\2/')
+auth_url=$(curl -s --head "https://$reg/v2/" | grep -i www-authenticate | sed 's/.*realm="\(.*\)",service="\(.*\)".*/\1?service=\2/')
 auth_token=$(curl -s "$auth_url&scope=repository:$lib/$img:pull" | jq -r '.token')
 auth="Authorization: Bearer $auth_token"
 
@@ -70,4 +73,4 @@ echo "  cleanup"
 rm "$dir/manifest.json"
 find "$CACHE_DIR" -type f -mtime +30 -exec rm -f {} +
 
-echo "successfully pulled $lib/$img@$tag to $dir"
+echo "successfully pulled $reg/$lib/$img@$tag to $dir"
