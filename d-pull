@@ -10,18 +10,18 @@ if [ $# -lt 1 ] || [ "$1" = '-h' ]; then
 	exit 1
 fi
 
-if echo "$1" | grep -q '@'; then
-	tag=$(echo "$1" | cut -f2 -d@)
-	img=$(echo "$1" | cut -f1 -d@)
-else
-	img=$1
-	tag='latest'
-fi
-if echo "$img" | grep -q '/'; then
-	lib=$(echo "$img" | cut -f2 -d/)
-	img=$(echo "$img" | cut -f1 -d/)
+if echo "$1" | grep -q '/'; then
+	lib=$(echo "$1" | cut -d/ -f1)
+	img=$(echo "$1" | cut -d/ -f2)
 else
 	lib='library'
+	img="$1"
+fi
+if echo "$img" | grep -q '@'; then
+	tag=$(echo "$img" | cut -d@ -f2)
+	img=$(echo "$img" | cut -d@ -f1)
+else
+	tag='latest'
 fi
 
 if [ $# -gt 1 ]; then
