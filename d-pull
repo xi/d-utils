@@ -4,7 +4,7 @@ CACHE_DIR="$HOME/.cache/d-utils/"
 mkdir -p "$CACHE_DIR"
 
 if [ $# -lt 1 ] || [ "$1" = '-h' ]; then
-	echo "usage: d-pull [-h] [registry/]name[@tag] [dir]"
+	echo "usage: d-pull [-h] [registry/]name[:tag] [dir]"
 	exit 1
 fi
 
@@ -20,9 +20,9 @@ fi
 if [ -z "$reg" ]; then
 	reg='registry-1.docker.io'
 fi
-if echo "$img" | grep -q '@'; then
-	tag=$(echo "$img" | cut -d@ -f2)
-	img=$(echo "$img" | cut -d@ -f1)
+if echo "$img" | grep -q ':'; then
+	tag=$(echo "$img" | cut -d: -f2)
+	img=$(echo "$img" | cut -d: -f1)
 else
 	tag='latest'
 fi
@@ -37,7 +37,7 @@ if [ -e "$dir" ]; then
 	exit 1
 fi
 
-echo "pulling $reg/$lib/$img@$tag to $dir"
+echo "pulling $reg/$lib/$img:$tag to $dir"
 url="https://$reg/v2/$lib/$img"
 
 echo "  fetching token"
@@ -49,7 +49,7 @@ auth="Authorization: Bearer $auth_token"
 curl --head -f --no-progress-meter -o /dev/null -H "$auth" "$url/manifests/$tag"
 
 mkdir -p "$dir/rootfs"
-echo "$lib/$img@$tag" > "$dir/image.txt"
+echo "$lib/$img:$tag" > "$dir/image.txt"
 
 echo "  fetching manifest"
 curl -s -H "$auth" -H "Accept: application/vnd.docker.distribution.manifest.v2+json" "$url/manifests/$tag" -o "$dir/manifest.json"
@@ -73,4 +73,4 @@ echo "  cleanup"
 rm "$dir/manifest.json"
 find "$CACHE_DIR" -type f -mtime +30 -exec rm -f {} +
 
-echo "successfully pulled $reg/$lib/$img@$tag to $dir"
+echo "successfully pulled $reg/$lib/$img:$tag to $dir"
