@@ -13,11 +13,14 @@ def make_volume(path, dir):
 		os.makedirs(hostpath, exist_ok=True)
 
 	if ':' in path:
-		path, option = path.rsplit(':', 1)
+		path, mode = path.rsplit(':', 1)
 	else:
-		option = 'rw'
+		mode = 'rw'
 
-	op = '--ro-bind' if option == 'ro' else '--bind'
+	if mode not in ['ro', 'rw']:
+		raise ValueError(f'Invalid volume mode: {mode}')
+
+	op = '--ro-bind' if mode == 'ro' else '--bind'
 
 	return [op, hostpath, path]
 
