@@ -23,13 +23,15 @@ that are actually used by `d-run`:
 
 -	`net` (bool) - enable networking (default: false)
 -	`fakeroot` (bool) - map UID and GID to 0 (default: false)
+-	`rw` (bool) - allow to modify the base image (default: false)
 
 You are encouraged to modify this file, e.g. to add a volume or change the
 default command.
 
-You can also modify the rootfs, both from a running container and from the host
-system. If you need a new container based on the same image you can just run
-`d-pull` again. The layers are cached in `~/.cache/d-utils/` for 30 days.
+You can also modify the rootfs, both from a running container (if it uses the
+`rw` option) and from the host system. If you need a new container based on the
+same image you can just run `d-pull` again. The layers are cached in
+`~/.cache/d-utils/` for 30 days.
 
 # Motivation
 

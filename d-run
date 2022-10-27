@@ -25,7 +25,7 @@ def make_volume(path, dir):
 def build_cmd(dir, config):
 	cmd = [
 		'bwrap',
-		'--bind', os.path.join(dir, 'rootfs'), '/',
+		'--ro-bind', os.path.join(dir, 'rootfs'), '/',
 		'--tmpfs', '/tmp',
 		'--dev', '/dev',
 		'--proc', '/proc',
@@ -33,6 +33,9 @@ def build_cmd(dir, config):
 		'--unshare-all',
 		'--die-with-parent',
 	]
+
+	if config.get('rw'):
+		cmd[1] = '--bind'
 
 	if config.get('Hostname'):
 		cmd += ['--hostname', config['Hostname']]
@@ -73,6 +76,7 @@ def parse_args():
 	parser.add_argument('-v', '--volume', action='append')
 	parser.add_argument('-n', '--net', action='store_true')
 	parser.add_argument('-r', '--fakeroot', action='store_true')
+	parser.add_argument('-w', '--rw', action='store_true')
 	parser.add_argument('cmd', nargs='*')
 	return parser.parse_args()
 
@@ -87,6 +91,8 @@ if __name__ == '__main__':
 		config['Cmd'] = args.cmd
 	if args.net:
 		config['net'] = True
+	if args.rw:
+		config['rw'] = True
 	if args.fakeroot:
 		config['fakeroot'] = True
 	if args.volume:
