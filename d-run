@@ -32,7 +32,7 @@ def build_cmd(dir, config):
 		'--tmpfs', '/tmp',
 		'--dev', '/dev',
 		'--proc', '/proc',
-		# '--clearenv',  # bwrap >= 0.5
+		'--clearenv',
 		'--unshare-all',
 		'--die-with-parent',
 	]
