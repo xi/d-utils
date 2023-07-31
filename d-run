@@ -50,14 +50,14 @@ def build_cmd(dir, config):
 		for volume in config['Volumes']:
 			cmd += make_volume(volume, dir)
 
-	if not config.get('rw'):
-		cmd += ['--remount-ro', '/']
-
 	if config.get('net'):
 		cmd += [
 			'--ro-bind', '/etc/resolv.conf', '/etc/resolv.conf',
 			'--share-net',
 		]
+
+	if not config.get('rw'):
+		cmd += ['--remount-ro', '/']
 
 	if config.get('fakeroot'):
 		cmd += [
