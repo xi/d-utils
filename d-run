@@ -3,6 +3,8 @@
 import os
 import json
 import argparse
+import grp
+import pwd
 
 
 def make_volume(path, dir):
@@ -23,6 +25,21 @@ def make_volume(path, dir):
 	op = '--ro-bind' if mode == 'ro' else '--bind'
 
 	return [op, hostpath, path]
+
+
+def parse_user(user):
+	uid = user
+	gid = None
+
+	if ':' in user:
+		uid, gid = uid.split(':', 1)
+		if not gid.isdigit():
+			gid = grp.getgrnam(gid).gr_gid
+
+	if not uid.isdigit():
+		uid = pwd.getpwnam('tobias').pw_uid
+
+	return uid, gid
 
 
 def build_cmd(dir, config):
@@ -59,11 +76,11 @@ def build_cmd(dir, config):
 	if not config.get('rw'):
 		cmd += ['--remount-ro', '/']
 
-	if config.get('fakeroot'):
-		cmd += [
-			'--uid', '0',
-			'--gid', '0',
-		]
+	if config.get('User'):
+		uid, gid = parse_user(config['User'])
+		cmd += ['--uid', uid]
+		if gid is not None:
+			cmd += ['--gid', gid]
 
 	if config.get('Entrypoint'):
 		cmd += config['Entrypoint']
@@ -77,8 +94,8 @@ def parse_args():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('dir')
 	parser.add_argument('-v', '--volume', action='append')
+	parser.add_argument('-u', '--user')
 	parser.add_argument('-n', '--net', action='store_true')
-	parser.add_argument('-r', '--fakeroot', action='store_true')
 	parser.add_argument('-w', '--rw', action='store_true')
 	parser.add_argument('cmd', nargs='*')
 	return parser.parse_args()
@@ -96,8 +113,8 @@ if __name__ == '__main__':
 		config['net'] = True
 	if args.rw:
 		config['rw'] = True
-	if args.fakeroot:
-		config['fakeroot'] = True
+	if args.user:
+		config['User'] = args.user
 	if args.volume:
 		if not config.get('Volumes'):
 			config['Volumes'] = {}

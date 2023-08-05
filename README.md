@@ -12,6 +12,7 @@ This is the full list of values from docker's
 [`config.json`](https://github.com/opencontainers/image-spec/blob/main/config.md)
 that are actually used by `d-run`:
 
+-	`User`
 -	`Hostname`
 -	`WorkingDir`
 -	`Env`
@@ -22,7 +23,6 @@ that are actually used by `d-run`:
 `d-run` uses the following additional values:
 
 -	`net` (bool) - enable networking (default: false)
--	`fakeroot` (bool) - map UID and GID to 0 (default: false)
 -	`rw` (bool) - allow to modify the base image (default: false)
 
 You are encouraged to modify this file, e.g. to add a volume or change the
