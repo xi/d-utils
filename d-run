@@ -42,7 +42,7 @@ def parse_user(user):
 	return uid, gid
 
 
-def build_cmd(dir, config):
+def build_bwrap(dir, config):
 	cmd = [
 		'bwrap',
 		'--bind', os.path.join(dir, 'rootfs'), '/',
@@ -88,6 +88,24 @@ def build_cmd(dir, config):
 	cmd += config['Cmd']
 
 	return cmd
+
+
+def build_cmd(dir, config):
+	cmd = [
+		'systemd-run',
+		'--user',
+		'--scope',
+		'--quiet',
+	]
+
+	if config.get('CpuShares'):
+		cmd += ['-p', f'CPUWeight={config["CpuShares"]}']
+	if config.get('Memory'):
+		cmd += ['-p', f'MemoryMax={config["Memory"]}']
+	if config.get('MemorySwap'):
+		cmd += ['-p', f'MemorySwapMax={config["MemorySwap"]}']
+
+	return cmd + build_bwrap(dir, config)
 
 
 def parse_args():
