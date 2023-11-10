@@ -52,7 +52,7 @@ mkdir -p "$dir/rootfs"
 echo "$lib/$img:$tag" > "$dir/image.txt"
 
 echo "  fetching manifest"
-curl -s -H "$auth" -H "Accept: application/vnd.docker.distribution.manifest.v2+json" "$url/manifests/$tag" -o "$dir/manifest.json"
+curl -s -H "$auth" -H "Accept: application/vnd.oci.image.manifest.v1+json" "$url/manifests/$tag" -o "$dir/manifest.json"
 
 echo "  fetching config"
 config=$(jq -r '.config.digest' "$dir/manifest.json")
