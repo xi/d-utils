@@ -55,8 +55,8 @@ echo "  fetching manifest"
 curl -s -H "$auth" -H "Accept: application/vnd.oci.image.manifest.v1+json" "$url/manifests/$tag" -o "$dir/manifest.json"
 
 while grep -q 'application\\/vnd.oci.image.index.v1+json' "$dir/manifest.json"; do
-	echo "  fetching first manifest in index"
-	digest=$(jq -r '.manifests[0].digest' "$dir/manifest.json")
+	echo "  fetching manifest for ${GOOS:-linux}/${GOARCH:-amd64}"
+	digest=$(jq -r "first(.manifests[] | select(.platform.os | test(\"${GOOS:-linux}\")) | select(.platform.architecture | test(\"${GOARCH:-amd64}\"))).digest" "$dir/manifest.json")
 	if [ -z "$digest" ]; then
 		echo "No matching manifest found"
 		exit 1
