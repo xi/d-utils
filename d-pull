@@ -1,5 +1,7 @@
 #!/bin/sh -e
 
+MANIFEST_TYPE='application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json;q=0.5'
+
 CACHE_DIR="$HOME/.cache/d-utils/"
 mkdir -p "$CACHE_DIR"
 
@@ -52,7 +54,7 @@ mkdir -p "$dir/rootfs"
 echo "$lib/$img:$tag" > "$dir/image.txt"
 
 echo "  fetching manifest"
-curl -s -H "$auth" -H "Accept: application/vnd.oci.image.manifest.v1+json" "$url/manifests/$tag" -o "$dir/manifest.json"
+curl -s -H "$auth" -H "Accept: $MANIFEST_TYPE" "$url/manifests/$tag" -o "$dir/manifest.json"
 
 while grep -q 'application\\/vnd.oci.image.index.v1+json' "$dir/manifest.json"; do
 	echo "  fetching manifest for ${GOOS:-linux}/${GOARCH:-amd64}"
@@ -61,7 +63,7 @@ while grep -q 'application\\/vnd.oci.image.index.v1+json' "$dir/manifest.json"; 
 		echo "No matching manifest found"
 		exit 1
 	fi
-	curl -s -L -H "$auth" -H "Accept: application/vnd.oci.image.manifest.v1+json" "$url/manifests/$digest" -o "$dir/manifest.json"
+	curl -s -L -H "$auth" -H "Accept: $MANIFEST_TYPE" "$url/manifests/$digest" -o "$dir/manifest.json"
 done
 
 echo "  fetching config"
