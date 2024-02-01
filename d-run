@@ -104,7 +104,7 @@ def parse_args():
 	parser.add_argument('-u', '--user')
 	parser.add_argument('-n', '--net', action='store_true')
 	parser.add_argument('-w', '--rw', action='store_true')
-	parser.add_argument('cmd', nargs='*')
+	parser.add_argument('cmd', nargs='...')
 	return parser.parse_args()
 
 
