@@ -104,8 +104,9 @@ principles are:
 -	Some tools are known to cause issues when not running as root:
 	-	dpkg ([workaround](https://github.com/opencontainers/runc/issues/2517#issuecomment-1030859646))
 
-# Prior Art
+# Similar Projects
 
 -	https://github.com/containers/bubblewrap
 -	https://github.com/NotGlop/docker-drag
 -	https://github.com/twosigma/debootwrap
+-	https://github.com/RalfJung/bubblebox
