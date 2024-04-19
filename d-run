@@ -92,6 +92,7 @@ def build_cmd(dir, config):
 	if config.get('Entrypoint'):
 		cmd += config['Entrypoint']
 
+	cmd.append('--')
 	cmd += config['Cmd']
 
 	return cmd
