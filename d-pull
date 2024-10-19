@@ -44,6 +44,9 @@ url="https://$reg/v2/$lib/$img"
 
 echo "  fetching token"
 auth_url=$(curl -s --head "https://$reg/v2/" | grep -i www-authenticate | sed 's/.*realm="\(.*\)",service="\(.*\)".*/\1?service=\2/')
+if [ -z "$auth_url" ]; then
+	auth_url=$(curl -s --head "$url/manifests/$tag" | grep -i www-authenticate | sed 's/.*realm="\(.*\)",service="\(.*\)".*/\1?service=\2/')
+fi
 auth_token=$(curl -s "$auth_url&scope=repository:$lib/$img:pull" | jq -r '.token')
 auth="Authorization: Bearer $auth_token"
 
