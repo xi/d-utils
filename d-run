@@ -89,10 +89,11 @@ def build_cmd(dir, config):
 		if gid is not None:
 			cmd += ['--gid', gid]
 
+	cmd.append('--')
+
 	if config.get('Entrypoint'):
 		cmd += config['Entrypoint']
 
-	cmd.append('--')
 	cmd += config['Cmd']
 
 	return cmd
