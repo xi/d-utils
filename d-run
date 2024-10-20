@@ -106,6 +106,7 @@ def parse_args():
 	parser.add_argument('-u', '--user')
 	parser.add_argument('-n', '--net', action='store_true')
 	parser.add_argument('-w', '--rw', action='store_true')
+	parser.add_argument('--debug', action='store_true')
 	parser.add_argument('cmd', nargs='...')
 	return parser.parse_args()
 
@@ -131,4 +132,6 @@ if __name__ == '__main__':
 			config['Volumes'][volume] = {}
 
 	cmd = build_cmd(args.dir, config)
+	if args.debug:
+		print(' '.join(cmd))
 	os.execvp(cmd[0], cmd)
