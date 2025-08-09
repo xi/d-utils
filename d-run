@@ -20,7 +20,12 @@ def make_volume(path, dir):
 	if mode not in ['ro', 'rw']:
 		raise ValueError(f'Invalid volume mode: {mode}')
 
-	op = '--ro-bind' if mode == 'ro' else '--bind'
+	if mode == 'ro':
+		op = '--ro-bind'
+	elif hostpath.startswith('/dev/'):
+		op = '--dev-bind'
+	else:
+		op = '--bind'
 
 	return [op, hostpath, path]
 
