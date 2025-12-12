@@ -110,3 +110,4 @@ principles are:
 -	https://github.com/NotGlop/docker-drag
 -	https://github.com/twosigma/debootwrap
 -	https://github.com/RalfJung/bubblebox
+-	https://github.com/89luca89/lilipod
