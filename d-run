@@ -3,14 +3,15 @@
 import argparse
 import json
 import os
+from pathlib import Path
 
 
 def make_volume(path, dir):
     if ':' in path:
         hostpath, path = path.split(':', 1)
     else:
-        hostpath = os.path.join(dir, 'volumes', path.lstrip('/'))
-        os.makedirs(hostpath, exist_ok=True)
+        hostpath = dir / 'volumes' / path.lstrip('/')
+        hostpath.mkdir(parents=True, exist_ok=True)
 
     if ':' in path:
         path, mode = path.rsplit(':', 1)
@@ -22,7 +23,7 @@ def make_volume(path, dir):
 
     if mode == 'ro':
         op = '--ro-bind'
-    elif hostpath.startswith('/dev/'):
+    elif hostpath.is_relative_to('/dev/'):
         op = '--dev-bind'
     else:
         op = '--bind'
@@ -46,10 +47,10 @@ def parse_user(user, root):
     if ':' in user:
         uid, gid = uid.split(':', 1)
         if not gid.isdigit():
-            gid = get_id(os.path.join(root, 'etc/group'), gid)
+            gid = get_id(root / 'etc' / 'group', gid)
 
     if not uid.isdigit():
-        uid = get_id(os.path.join(root, 'etc/passwd'), uid)
+        uid = get_id(root / 'etc' / 'passwd', uid)
 
     return uid, gid
 
@@ -57,7 +58,7 @@ def parse_user(user, root):
 def build_cmd(dir, config):
     cmd = [
         'bwrap',
-        '--bind', os.path.join(dir, 'rootfs'), '/',
+        '--bind', dir / 'rootfs', '/',
         '--tmpfs', '/tmp',
         '--dev', '/dev',
         '--proc', '/proc',
@@ -89,7 +90,7 @@ def build_cmd(dir, config):
         cmd += ['--remount-ro', '/']
 
     if config.get('User'):
-        uid, gid = parse_user(config['User'], os.path.join(dir, 'rootfs'))
+        uid, gid = parse_user(config['User'], dir / 'rootfs')
         cmd += ['--uid', uid]
         if gid is not None:
             cmd += ['--gid', gid]
@@ -106,7 +107,7 @@ def build_cmd(dir, config):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('dir')
+    parser.add_argument('dir', type=Path)
     parser.add_argument('-v', '--volume', action='append')
     parser.add_argument('-u', '--user')
     parser.add_argument('-n', '--net', action='store_true')
@@ -119,7 +120,7 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
 
-    with open(os.path.join(args.dir, 'config.json')) as fh:
+    with open(args.dir / 'config.json') as fh:
         config = json.load(fh)
 
     if args.cmd:
@@ -138,5 +139,5 @@ if __name__ == '__main__':
 
     cmd = build_cmd(args.dir, config)
     if args.debug:
-        print(' '.join(cmd))
+        print(' '.join(str(x) for x in cmd))
     os.execvp(cmd[0], cmd)
