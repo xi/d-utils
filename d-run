@@ -121,7 +121,8 @@ if __name__ == '__main__':
     args = parse_args()
 
     with open(args.dir / 'config.json') as fh:
-        config = json.load(fh)
+        image = json.load(fh)
+        config = image['config']
 
     if args.cmd:
         config['Cmd'] = args.cmd

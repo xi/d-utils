@@ -82,7 +82,7 @@ done
 echo "  fetching config"
 config=$(jq -r '.config.digest' "$dir/manifest.json")
 cache "$config"
-jq '.config' "$CACHE_DIR/$config" > "$dir/config.json"
+jq '.' "$CACHE_DIR/$config" > "$dir/config.json"
 
 echo "  fetching layers"
 jq -r '.layers|map(.digest)|.[]' "$dir/manifest.json" | while read -r blob; do
