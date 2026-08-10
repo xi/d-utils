@@ -2,7 +2,7 @@
 
 MANIFEST_TYPE='application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json;q=0.5, application/vnd.oci.image.index.v1+json;q=0.3'
 
-CACHE_DIR="$HOME/.cache/d-utils/"
+CACHE_DIR="$HOME/.cache/d-utils"
 mkdir -p "$CACHE_DIR"
 
 if [ $# -lt 1 ] || [ "$1" = '-h' ]; then
