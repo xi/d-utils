@@ -59,7 +59,7 @@ echo "$lib/$img:$tag" > "$dir/image.txt"
 echo "  fetching manifest"
 curl -s -H "$auth" -H "Accept: $MANIFEST_TYPE" "$url/manifests/$tag" -o "$dir/manifest.json"
 
-while grep -q 'application\\\?/vnd.oci.image.index.v1+json' "$dir/manifest.json"; do
+while jq -e 'has("manifests")' "$dir/manifest.json" > /dev/null; do
 	query="first(.manifests[] | select(.platform.os | test(\"${GOOS:-linux}\")) | select(.platform.architecture | test(\"${GOARCH:-amd64}\"))).digest"
 	if jq -e "$query" "$dir/manifest.json" > /dev/null; then
 		echo "  fetching manifest for ${GOOS:-linux}/${GOARCH:-amd64}"
