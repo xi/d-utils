@@ -61,7 +61,8 @@ cache() {
 # fail if server reports error
 curl --head -f --no-progress-meter -o /dev/null -H "$auth" -H "Accept: $MANIFEST_TYPE" "$url/manifests/$tag"
 
-mkdir -p "$dir/rootfs"
+mkdir -p "$dir/local"
+mkdir -p "$dir/.work"
 echo "$lib/$img:$tag" > "$dir/image.txt"
 
 echo "  fetching manifest"
@@ -85,10 +86,11 @@ cache "$config"
 jq '.' "$CACHE_DIR/$config" > "$dir/config.json"
 
 echo "  fetching layers"
-jq -r '.layers|map(.digest)|.[]' "$dir/manifest.json" | while read -r blob; do
-    echo "     $blob"
-    cache "$blob"
-    tar -C "$dir/rootfs" -xf "$CACHE_DIR/$blob"
+jq -r '[(.layers|map(.digest)), $config[0].rootfs.diff_ids] | transpose | map(@tsv) | .[]' "$dir/manifest.json" --slurpfile config "$dir/config.json" | while IFS=$(printf '\t') read -r digest diffid; do
+    echo "     $digest"
+    cache "$digest"
+    mkdir "$dir/$diffid"
+    tar -C "$dir/$diffid" -xf "$CACHE_DIR/$digest"
 done
 
 echo "  cleanup"
