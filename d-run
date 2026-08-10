@@ -1,142 +1,142 @@
 #!/bin/env python3
 
-import os
-import json
 import argparse
+import json
+import os
 
 
 def make_volume(path, dir):
-	if ':' in path:
-		hostpath, path = path.split(':', 1)
-	else:
-		hostpath = os.path.join(dir, 'volumes', path.lstrip('/'))
-		os.makedirs(hostpath, exist_ok=True)
+    if ':' in path:
+        hostpath, path = path.split(':', 1)
+    else:
+        hostpath = os.path.join(dir, 'volumes', path.lstrip('/'))
+        os.makedirs(hostpath, exist_ok=True)
 
-	if ':' in path:
-		path, mode = path.rsplit(':', 1)
-	else:
-		mode = 'rw'
+    if ':' in path:
+        path, mode = path.rsplit(':', 1)
+    else:
+        mode = 'rw'
 
-	if mode not in ['ro', 'rw']:
-		raise ValueError(f'Invalid volume mode: {mode}')
+    if mode not in ['ro', 'rw']:
+        raise ValueError(f'Invalid volume mode: {mode}')
 
-	if mode == 'ro':
-		op = '--ro-bind'
-	elif hostpath.startswith('/dev/'):
-		op = '--dev-bind'
-	else:
-		op = '--bind'
+    if mode == 'ro':
+        op = '--ro-bind'
+    elif hostpath.startswith('/dev/'):
+        op = '--dev-bind'
+    else:
+        op = '--bind'
 
-	return [op, hostpath, path]
+    return [op, hostpath, path]
 
 
 def get_id(file, name):
-	with open(file) as fh:
-		for line in fh:
-			parts = line.split(':')
-			if parts[0] == name:
-				return parts[2]
-	raise KeyError(name)
+    with open(file) as fh:
+        for line in fh:
+            parts = line.split(':')
+            if parts[0] == name:
+                return parts[2]
+    raise KeyError(name)
 
 
 def parse_user(user, root):
-	uid = user
-	gid = None
+    uid = user
+    gid = None
 
-	if ':' in user:
-		uid, gid = uid.split(':', 1)
-		if not gid.isdigit():
-			gid = get_id(os.path.join(root, 'etc/group'), gid)
+    if ':' in user:
+        uid, gid = uid.split(':', 1)
+        if not gid.isdigit():
+            gid = get_id(os.path.join(root, 'etc/group'), gid)
 
-	if not uid.isdigit():
-		uid = get_id(os.path.join(root, 'etc/passwd'), uid)
+    if not uid.isdigit():
+        uid = get_id(os.path.join(root, 'etc/passwd'), uid)
 
-	return uid, gid
+    return uid, gid
 
 
 def build_cmd(dir, config):
-	cmd = [
-		'bwrap',
-		'--bind', os.path.join(dir, 'rootfs'), '/',
-		'--tmpfs', '/tmp',
-		'--dev', '/dev',
-		'--proc', '/proc',
-		'--clearenv',
-		'--unshare-all',
-		'--die-with-parent',
-	]
+    cmd = [
+        'bwrap',
+        '--bind', os.path.join(dir, 'rootfs'), '/',
+        '--tmpfs', '/tmp',
+        '--dev', '/dev',
+        '--proc', '/proc',
+        '--clearenv',
+        '--unshare-all',
+        '--die-with-parent',
+    ]
 
-	if config.get('Hostname'):
-		cmd += ['--hostname', config['Hostname']]
-	if config.get('WorkingDir'):
-		cmd += ['--chdir', config['WorkingDir']]
+    if config.get('Hostname'):
+        cmd += ['--hostname', config['Hostname']]
+    if config.get('WorkingDir'):
+        cmd += ['--chdir', config['WorkingDir']]
 
-	for entry in config['Env']:
-		key, value = entry.split('=', 1)
-		cmd += ['--setenv', key, value]
+    for entry in config['Env']:
+        key, value = entry.split('=', 1)
+        cmd += ['--setenv', key, value]
 
-	if config.get('Volumes'):
-		for volume in config['Volumes']:
-			cmd += make_volume(volume, dir)
+    if config.get('Volumes'):
+        for volume in config['Volumes']:
+            cmd += make_volume(volume, dir)
 
-	if config.get('net'):
-		cmd += [
-			'--ro-bind', '/etc/resolv.conf', '/etc/resolv.conf',
-			'--share-net',
-		]
+    if config.get('net'):
+        cmd += [
+            '--ro-bind', '/etc/resolv.conf', '/etc/resolv.conf',
+            '--share-net',
+        ]
 
-	if not config.get('rw'):
-		cmd += ['--remount-ro', '/']
+    if not config.get('rw'):
+        cmd += ['--remount-ro', '/']
 
-	if config.get('User'):
-		uid, gid = parse_user(config['User'], os.path.join(dir, 'rootfs'))
-		cmd += ['--uid', uid]
-		if gid is not None:
-			cmd += ['--gid', gid]
+    if config.get('User'):
+        uid, gid = parse_user(config['User'], os.path.join(dir, 'rootfs'))
+        cmd += ['--uid', uid]
+        if gid is not None:
+            cmd += ['--gid', gid]
 
-	cmd.append('--')
+    cmd.append('--')
 
-	if config.get('Entrypoint'):
-		cmd += config['Entrypoint']
+    if config.get('Entrypoint'):
+        cmd += config['Entrypoint']
 
-	cmd += config['Cmd']
+    cmd += config['Cmd']
 
-	return cmd
+    return cmd
 
 
 def parse_args():
-	parser = argparse.ArgumentParser()
-	parser.add_argument('dir')
-	parser.add_argument('-v', '--volume', action='append')
-	parser.add_argument('-u', '--user')
-	parser.add_argument('-n', '--net', action='store_true')
-	parser.add_argument('-w', '--rw', action='store_true')
-	parser.add_argument('--debug', action='store_true')
-	parser.add_argument('cmd', nargs='...')
-	return parser.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('dir')
+    parser.add_argument('-v', '--volume', action='append')
+    parser.add_argument('-u', '--user')
+    parser.add_argument('-n', '--net', action='store_true')
+    parser.add_argument('-w', '--rw', action='store_true')
+    parser.add_argument('--debug', action='store_true')
+    parser.add_argument('cmd', nargs='...')
+    return parser.parse_args()
 
 
 if __name__ == '__main__':
-	args = parse_args()
+    args = parse_args()
 
-	with open(os.path.join(args.dir, 'config.json')) as fh:
-		config = json.load(fh)
+    with open(os.path.join(args.dir, 'config.json')) as fh:
+        config = json.load(fh)
 
-	if args.cmd:
-		config['Cmd'] = args.cmd
-	if args.net:
-		config['net'] = True
-	if args.rw:
-		config['rw'] = True
-	if args.user:
-		config['User'] = args.user
-	if args.volume:
-		if not config.get('Volumes'):
-			config['Volumes'] = {}
-		for volume in args.volume:
-			config['Volumes'][volume] = {}
+    if args.cmd:
+        config['Cmd'] = args.cmd
+    if args.net:
+        config['net'] = True
+    if args.rw:
+        config['rw'] = True
+    if args.user:
+        config['User'] = args.user
+    if args.volume:
+        if not config.get('Volumes'):
+            config['Volumes'] = {}
+        for volume in args.volume:
+            config['Volumes'][volume] = {}
 
-	cmd = build_cmd(args.dir, config)
-	if args.debug:
-		print(' '.join(cmd))
-	os.execvp(cmd[0], cmd)
+    cmd = build_cmd(args.dir, config)
+    if args.debug:
+        print(' '.join(cmd))
+    os.execvp(cmd[0], cmd)
