@@ -5,6 +5,7 @@
 -	`d-pull NAME[:TAG] [DIR]` will download a docker image and save it to `DIR`.
 	It is saved as a single `rootfs` folder along with a `config.json`.
 -	`d-run DIR [CMD]` will execute `CMD` in the container give by `DIR`.
+-	`d-build` will execute commands from a Dockerfile to build a new image.
 
 # Config
 
