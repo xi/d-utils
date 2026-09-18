@@ -9,6 +9,7 @@ from pathlib import Path
 def make_volume(path, dir):
     if ':' in path:
         hostpath, path = path.split(':', 1)
+        hostpath = Path(hostpath)
     else:
         hostpath = dir / 'volumes' / path.lstrip('/')
         hostpath.mkdir(parents=True, exist_ok=True)
