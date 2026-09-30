@@ -1,0 +1,206 @@
+#!/bin/env python3
+
+# https://docs.docker.com/reference/dockerfile/
+
+import json
+import os
+import subprocess
+
+
+def iter_lines(fh):
+    chunks = []
+    for i, line in enumerate(fh):
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        if line.endswith('\\'):
+            chunks.append(line.rstrip('\\').strip())
+            continue
+        chunks.append(line)
+        yield i + 2 - len(chunks), ' '.join(chunks)
+        chunks = []
+    if chunks:
+        raise ValueError(chunks)
+
+
+def parse_from(s):
+    parts = s.split()
+    if len(parts) == 3 and parts[1] == 'AS':
+        return parts[0], parts[2]
+    elif len(parts) == 1:
+        return parts[0], None
+    else:
+        raise ValueError
+
+
+def parse_cmd(s):
+    if s.startswith('['):
+        return json.loads(s)
+    else:
+        return ['sh', '-c', s]
+
+
+def parse_key_value(s):
+    data = {}
+    while s:
+        if s.startswith('"'):
+            key, s = s.removeprefix('"').split('"=', 1)
+        else:
+            key, s = s.split('=', 1)
+        if s.startswith('"'):
+            value, s = s.removeprefix('"').split('"', 1)
+        else:
+            parts = s.split(None, 1)
+            if len(parts) == 1:
+                parts.append('')
+            value, s = parts
+        data[key] = value
+        s = s.strip()
+    return data
+
+
+class Executor:
+    def __init__(self, build_dir='build'):
+        self.build_dir = build_dir
+        self.name = None
+        self.names = []
+        self.aliases = {}
+        self._config = None
+
+    def get_path(self, name):
+        return os.path.join(self.build_dir, name)
+
+    def rootfs_path(self, path, name, config):
+        cwd = self.config.get('WorkingDir') or '/'
+        tmp = os.path.join(cwd, path)
+        tmp = os.path.normpath(tmp)
+        return os.path.join(self.get_path(name), 'rootfs', tmp.lstrip('/'))
+
+    def get_config(self, name):
+        path = os.path.join(self.get_path(name), 'config.json')
+        if not os.path.exists(path):
+            return {}
+        with open(path) as fh:
+            return json.load(fh)
+
+    @property
+    def path(self):
+        return self.get_path(self.name)
+
+    @property
+    def config(self):
+        if self._config is None:
+            self._config = self.get_config(self.name)
+        return self._config
+
+    def set_config(self, key, value):
+        self.config[key] = value
+        path = os.path.join(self.path, 'config.json')
+        with open(path, 'w') as fh:
+            return json.dump(self.config, fh, indent=2)
+
+    def exec_from(self, tail):
+        base, self.name = parse_from(tail)
+        if not self.name:
+            self.name = str(len(self.names))
+        if base.isnumeric():
+            base = self.names[int(base)]
+
+        base_path = self.get_path(base)
+        if os.path.exists(base_path):
+            subprocess.run(['cp', '-r', base_path, self.path], check=True)
+        elif base == 'scratch':
+            os.mkdir(self.path)
+            os.mkdir(os.path.join(self.path, 'rootfs'))
+        else:
+            subprocess.run(['d-pull', base, self.path], check=True)
+
+        self.names.append(self.name)
+        self._config = None
+
+    def exec_run(self, tail):
+        args = parse_cmd(tail)
+        subprocess.run(['d-run', '-n', '-w', self.path, *args], check=True)
+
+    def exec_copy(self, tail):
+        if '--from' in tail:
+            base, *src, dest = tail.split()
+            base = base.removeprefix('--from=')
+            if base in self.names:
+                pass
+            elif base.isnumeric():
+                base = self.names[int(base)]
+            elif base in self.aliases:
+                base = self.aliases[base]
+            else:
+                alias = f'alias-{len(self.aliases)}'
+                self.aliases[base] = alias
+                subprocess.run(['d-pull', base, self.get_path(alias)], check=True)
+                base = alias
+
+            base_config = self.get_config(base)
+            src = [self.rootfs_path(s, base, base_config) for s in src]
+        else:
+            *src, dest = tail.split()
+
+        dest = self.rootfs_path(dest, self.name, self.config)
+
+        # TODO: exact copy semantics differ
+        subprocess.run(['cp', '-r', *src, dest], check=True)
+
+    def exec_cmd(self, tail):
+        self.set_config('Cmd', parse_cmd(tail))
+
+    def exec_entrypoint(self, tail):
+        self.set_config('Entrypoint', parse_cmd(tail))
+
+    def exec_label(self, tail):
+        labels = self.config.get('Labels') or {}
+        labels.update(parse_key_value(tail))
+        self.set_config('Labels', labels)
+
+    def exec_expose(self, tail):
+        ports = self.config.get('ExposedPorts') or {}
+        for port in tail.split():
+            ports[port] = {}
+        self.set_config('ExposedPorts', ports)
+
+    def exec_env(self, tail):
+        if '=' in tail:
+            data = parse_key_value(tail)
+        else:
+            key, value = tail.split(None, 1)
+            data = {key: value}
+
+        env = self.config.get('Env') or []
+        for key, value in data.items():
+            env.append(f'{key}={value}')
+        self.set_config('Env', env)
+
+    def exec_volume(self, tail):
+        volumes = self.config.get('Volumes') or {}
+        volumes[tail] = {}  # TODO
+        self.set_config('Volumes', volumes)
+
+    def exec_user(self, tail):
+        self.set_config('User', tail)
+
+    def exec_workdir(self, tail):
+        path = self.rootfs_path(tail, self.name, self.config)
+        os.makedirs(path, exist_ok=True)
+
+        cwd = self.config.get('WorkingDir') or '/'
+        self.set_config('WorkingDir', os.path.join(cwd, tail))
+
+    def exec(self, fh):
+        os.mkdir(self.build_dir)
+        for _lineno, line in iter_lines(fh):
+            cmd, tail = line.split(None, 1)
+            fn = getattr(self, f'exec_{cmd.lower()}')
+            fn(tail)
+
+
+if __name__ == '__main__':
+    e = Executor()
+    with open('Dockerfile') as fh:
+        e.exec(fh)
