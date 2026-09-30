@@ -3,7 +3,8 @@
 `d-utils` is a set of simple utils to use docker images without docker.
 
 -	`d-pull NAME[:TAG] [DIR]` will download a docker image and save it to `DIR`.
-	It is saved as a single `rootfs` folder along with a `config.json`.
+	It is saved as a `config.json` along with a directory for each layer and
+	`local` and `.work` directories for local modifications.
 -	`d-run DIR [CMD]` will execute `CMD` in the container give by `DIR`.
 
 # Config
@@ -23,15 +24,15 @@ that are actually used by `d-run`:
 `d-run` uses the following additional values:
 
 -	`net` (bool) - enable networking (default: false)
--	`rw` (bool) - allow to modify the base image (default: false)
+-	`rw` (bool) - allow to modify the local layer (default: false)
 
 You are encouraged to modify this file, e.g. to add a volume or change the
 default command.
 
-You can also modify the rootfs, both from a running container (if it uses the
-`rw` option) and from the host system. If you need a new container based on the
-same image you can just run `d-pull` again. The layers are cached in
-`~/.cache/d-utils/` for 30 days.
+You can also modify the directory tree, both from a running container (if it
+uses the `rw` option) and from the host system. If you need a new container
+based on the same image you can just run `d-pull` again. The layers are cached
+in `~/.cache/d-utils/` for 30 days.
 
 # Motivation
 
@@ -88,7 +89,6 @@ principles are:
 	-	Completeness can be sacrificed in favor of simplicity
 		([worse is better](https://www.jwz.org/doc/worse-is-better.html))
 	-	Use established tools for the complicated bits
-	-	The filesystem is stored in a single folder, no layerfs/aufs/overlayfs
 	-	Linux only
 -	Explicit is better than implicit
 	-	Containers have a simple folder structure

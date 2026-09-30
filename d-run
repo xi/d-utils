@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import subprocess
 from pathlib import Path
 
 
@@ -32,40 +33,56 @@ def make_volume(path, dir):
     return [op, hostpath, path]
 
 
-def get_id(file, name):
-    with open(file) as fh:
-        for line in fh:
-            parts = line.split(':')
-            if parts[0] == name:
-                return parts[2]
-    raise KeyError(name)
+def run_cmd(cmd, dir, layers):
+    bwrap = ['bwrap']
+    for layer in layers:
+        bwrap += ['--overlay-src', dir / layer]
+    bwrap += ['--overlay-src', dir / 'local']
+    bwrap += ['--tmp-overlay', '/']
+    return subprocess.run([*bwrap, '--', *cmd], capture_output=True, check=True)
 
 
-def parse_user(user, root):
+def get_id(category, name, dir, layers):
+    proc = run_cmd(['getent', category, name], dir, layers)
+    return proc.stdout.split(b':')[2].decode()
+
+
+def parse_user(user, dir, layers):
     uid = user
     gid = None
 
     if ':' in user:
         uid, gid = uid.split(':', 1)
         if not gid.isdigit():
-            gid = get_id(root / 'etc' / 'group', gid)
+            gid = get_id('group', gid, dir, layers)
 
     if not uid.isdigit():
-        uid = get_id(root / 'etc' / 'passwd', uid)
+        uid = get_id('passwd', uid, dir, layers)
 
     return uid, gid
 
 
-def build_cmd(dir, config):
+def build_cmd(dir, layers, config):
     cmd = [
         'bwrap',
-        '--bind', dir / 'rootfs', '/',
-        '--tmpfs', '/tmp',
-        '--dev', '/dev',
-        '--proc', '/proc',
         '--clearenv',
         '--unshare-all',
         '--die-with-parent',
+    ]
+
+    for layer in layers:
+        cmd += ['--overlay-src', dir / layer]
+
+    if config.get('rw'):
+        cmd += ['--overlay', dir / 'local', dir / '.work', '/']
+    else:
+        cmd += ['--overlay-src', dir / 'local']
+        cmd += ['--tmp-overlay', '/']
+
+    cmd += [
+        '--tmpfs', '/tmp',
+        '--dev', '/dev',
+        '--proc', '/proc',
     ]
 
     if config.get('Hostname'):
@@ -91,7 +108,7 @@ def build_cmd(dir, config):
         cmd += ['--remount-ro', '/']
 
     if config.get('User'):
-        uid, gid = parse_user(config['User'], dir / 'rootfs')
+        uid, gid = parse_user(config['User'], dir, layers)
         cmd += ['--uid', uid]
         if gid is not None:
             cmd += ['--gid', gid]
@@ -122,7 +139,9 @@ if __name__ == '__main__':
     args = parse_args()
 
     with open(args.dir / 'config.json') as fh:
-        config = json.load(fh)
+        image = json.load(fh)
+        config = image['config']
+        layers = image['rootfs']['diff_ids']
 
     if args.cmd:
         config['Cmd'] = args.cmd
@@ -138,7 +157,7 @@ if __name__ == '__main__':
         for volume in args.volume:
             config['Volumes'][volume] = {}
 
-    cmd = build_cmd(args.dir, config)
+    cmd = build_cmd(args.dir, layers, config)
     if args.debug:
         print(' '.join(str(x) for x in cmd))
     os.execvp(cmd[0], cmd)
