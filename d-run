@@ -111,6 +111,7 @@ def parse_args():
     parser.add_argument('dir', type=Path)
     parser.add_argument('-v', '--volume', action='append')
     parser.add_argument('-u', '--user')
+    parser.add_argument('-d', '--working-dir')
     parser.add_argument('-n', '--net', action='store_true')
     parser.add_argument('-w', '--rw', action='store_true')
     parser.add_argument('--debug', action='store_true')
@@ -130,6 +131,8 @@ if __name__ == '__main__':
         config['net'] = True
     if args.rw:
         config['rw'] = True
+    if args.working_dir:
+        config['WorkingDir'] = args.working_dir
     if args.user:
         config['User'] = args.user
     if args.volume:
